@@ -96,6 +96,14 @@
                 <img id="videoStream" src="/video_feed" alt="Real-time Video Feed" class="video-element" />
                 <video id="clientWebcamVideo" autoplay playsinline muted class="video-element" style="display:none; transform: scaleX(-1); object-fit: cover; width:100%; height:100%;"></video>
                 
+                <!-- Cloud Camera Permission Prompt Overlay -->
+                <div id="cameraPermissionPrompt" style="display:none; position:absolute; inset:0; background:rgba(15,23,42,0.85); backdrop-filter:blur(8px); flex-direction:column; align-items:center; justify-content:center; gap:10px; z-index:20; text-align:center; padding:18px;">
+                    <span style="font-size:2rem;">📷</span>
+                    <h3 style="margin:0; font-family:var(--font-heading); color:#fff; font-size:1.05rem;">Enable Browser Camera</h3>
+                    <p style="margin:0; font-size:0.78rem; color:var(--text-muted); max-width:260px;">Cloud deployment detected. Click below to allow camera access in your browser.</p>
+                    <button id="btnAllowCamera" class="btn btn-primary" style="padding:8px 18px; font-size:0.85rem; border-radius:6px; cursor:pointer;">▶ Allow Camera</button>
+                </div>
+
                 <!-- HUD Overlay Pill -->
                 <div class="hud-overlay" id="hudOverlay">
                     <div class="hud-item">

@@ -13,11 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Video Stream Element & Cloud Client Webcam Fallback
     const videoStream = document.getElementById('videoStream');
     const clientWebcamVideo = document.getElementById('clientWebcamVideo');
+    const cameraPrompt = document.getElementById('cameraPermissionPrompt');
+    const btnAllowCamera = document.getElementById('btnAllowCamera');
 
     function startClientWebcam() {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
                 .then(stream => {
+                    if (cameraPrompt) cameraPrompt.style.display = 'none';
                     if (videoStream) videoStream.style.display = 'none';
                     if (clientWebcamVideo) {
                         clientWebcamVideo.style.display = 'block';
@@ -25,13 +28,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 })
                 .catch(err => {
-                    console.warn('Browser webcam access denied or unavailable:', err);
+                    console.warn('Browser webcam access denied or requires user interaction:', err);
+                    if (cameraPrompt) cameraPrompt.style.display = 'flex';
                 });
+        } else {
+            if (cameraPrompt) cameraPrompt.style.display = 'flex';
         }
     }
 
+    if (btnAllowCamera) {
+        btnAllowCamera.addEventListener('click', () => {
+            startClientWebcam();
+        });
+    }
+
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        // Cloud environment (Render/AWS/etc.) - use client browser camera!
+        // Cloud environment (Render/AWS/etc.)
         startClientWebcam();
     } else if (videoStream) {
         videoStream.onerror = () => {
