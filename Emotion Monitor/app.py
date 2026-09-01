@@ -180,7 +180,7 @@ class AttentionTracker:
         self.reset()
 
     def reset(self):
-        self.calibrating = True
+        self.calibrating = False
         self.samples = []
         self.center_h = 0.5
         self.center_v = 0.5
@@ -407,12 +407,12 @@ class MonitorEngine:
         self.current_gaze = "Looking Center"
         self.eyes_open = True
         self.faces_count = 0
-        self.status = "CALIBRATING"
+        self.status = "FOCUSED"
         self.gaze_h = 0.5
         self.gaze_v = 0.5
         self.head_yaw = 0.0
         self.head_pitch = 0.0
-        self.calibrating = True
+        self.calibrating = False
         self.distraction_duration = 0.0
         self.last_distracted_time = None
 
