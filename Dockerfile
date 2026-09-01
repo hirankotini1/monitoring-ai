@@ -6,11 +6,14 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install native system dependencies required by OpenCV and MediaPipe
+# Install native system dependencies required by OpenCV and MediaPipe (including OpenGL/EGL)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     libgomp1 \
+    libegl1 \
+    libgles2 \
+    libgl1-mesa-dev \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
