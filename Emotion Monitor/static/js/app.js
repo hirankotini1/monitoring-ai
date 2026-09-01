@@ -48,25 +48,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startClientWebcam() {
+        if (btnAllowCamera) btnAllowCamera.textContent = 'Connecting Camera...';
+        const constraints = {
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: 'user'
+            }
+        };
+
+        const tryGetMedia = (mediaConstraints) => {
+            return navigator.mediaDevices.getUserMedia(mediaConstraints);
+        };
+
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            tryGetMedia(constraints)
+                .catch(() => tryGetMedia({ video: true }))
                 .then(stream => {
                     if (cameraPrompt) cameraPrompt.style.display = 'none';
                     if (videoStream) videoStream.style.display = 'none';
                     if (clientWebcamVideo) {
                         clientWebcamVideo.style.display = 'block';
                         clientWebcamVideo.srcObject = stream;
+                        clientWebcamVideo.onloadedmetadata = () => {
+                            clientWebcamVideo.play().catch(() => {});
+                        };
                         clientWebcamVideo.play().catch(() => {});
                     }
                     isStreamingFrames = true;
                     setTimeout(streamCloudFrames, 300);
                 })
                 .catch(err => {
-                    console.warn('Browser webcam access denied or requires user interaction:', err);
-                    if (cameraPrompt) cameraPrompt.style.display = 'flex';
+                    console.warn('Browser webcam error:', err);
+                    if (cameraPrompt) {
+                        cameraPrompt.style.display = 'flex';
+                        const promptText = cameraPrompt.querySelector('p');
+                        if (promptText) {
+                            if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                                promptText.textContent = 'Webcam is currently in use by another app. Please close other camera apps and retry.';
+                            } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                                promptText.textContent = 'Camera permission was blocked. Please click the camera icon in your browser URL bar to allow.';
+                            } else {
+                                promptText.textContent = `Camera Error: ${err.message || err.name}. Please retry.`;
+                            }
+                        }
+                    }
+                    if (btnAllowCamera) btnAllowCamera.textContent = '▶ Retry Camera';
                 });
         } else {
             if (cameraPrompt) cameraPrompt.style.display = 'flex';
+            if (btnAllowCamera) btnAllowCamera.textContent = '▶ Allow Camera';
         }
     }
 
