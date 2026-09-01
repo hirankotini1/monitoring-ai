@@ -17,31 +17,34 @@
     <header class="app-header">
         <div class="nav-brand-group">
             <div class="logo-badge">
-                <div class="pulse-indicator"></div>
-                <span class="logo-icon">👁️</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="brand-svg-icon">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                    <path d="M2 12h20"></path>
+                </svg>
             </div>
             <div class="brand-text">
-                <span class="brand-title">EMOTION<span class="brand-accent">MONITOR</span></span>
-                <span class="brand-tag">AI CORE</span>
+                <span class="brand-title">Focus<span class="brand-accent">Sense</span></span>
+                <span class="brand-tag">PRO</span>
             </div>
         </div>
 
         <!-- Integrated Clean Tabs Pill Bar -->
         <nav class="header-nav-tabs">
             <button class="nav-tab-btn active" data-tab="tab-live">
-                <span class="tab-icon">👁️</span> Live Monitor
+                <span class="tab-dot"></span> Overview
             </button>
             <button class="nav-tab-btn" data-tab="tab-sessions">
-                <span class="tab-icon">⏱️</span> Sessions
+                Sessions
             </button>
             <button class="nav-tab-btn" data-tab="tab-analytics">
-                <span class="tab-icon">📊</span> Analytics
+                Analytics
             </button>
             <button class="nav-tab-btn" data-tab="tab-reports">
-                <span class="tab-icon">📄</span> Reports
+                Reports
             </button>
             <button class="nav-tab-btn" data-tab="tab-ml">
-                <span class="tab-icon">🤖</span> ML Intelligence
+                Models
             </button>
         </nav>
 
@@ -49,10 +52,10 @@
         <div class="header-telemetry">
             <div class="status-chip" id="globalStatusChip">
                 <span class="dot"></span>
-                <span class="text" id="globalStatusText">CALIBRATING</span>
+                <span class="text" id="globalStatusText">FOCUSED</span>
             </div>
             <div class="telemetry-pill">
-                <span class="pill-item">⏱️ <span id="sessionTimer">00:00:00</span></span>
+                <span class="pill-item"><span id="sessionTimer">00:00:00</span></span>
                 <span class="pill-divider">/</span>
                 <span class="pill-item"><span id="fpsDisplay">0.0</span> <small>FPS</small></span>
             </div>
@@ -61,15 +64,15 @@
         <!-- Action Controls -->
         <div class="header-actions">
             <button class="btn btn-session-start" id="btnFrontStartSession" title="Start a new monitoring session">
-                <span>▶</span> Start Session
+                <span class="btn-play-icon">▶</span> Start Session
             </button>
             <button class="btn btn-session-end" id="btnFrontEndSession" style="display: none;" title="End active monitoring session and view analysis">
                 <span class="recording-indicator-dot"></span> End Session
             </button>
             <div class="btn-group">
-                <button class="btn btn-tool" id="btnToggleMesh" title="Toggle Face Mesh overlay">✨ Mesh</button>
-                <button class="btn btn-tool" id="btnRecalibrate" title="Recalibrate neutral eye direction">🎯 Calibrate</button>
-                <button class="btn btn-tool" id="btnResetSession" title="Reset current session statistics">🔄 Reset</button>
+                <button class="btn btn-tool" id="btnToggleMesh" title="Toggle Face Mesh overlay">Mesh</button>
+                <button class="btn btn-tool" id="btnRecalibrate" title="Recalibrate neutral eye direction">Calibrate</button>
+                <button class="btn btn-tool" id="btnResetSession" title="Reset current session statistics">Reset</button>
                 <button class="btn btn-tool btn-icon-only" id="btnAudioToggle" title="Toggle distraction audio alert">
                     <span id="audioIcon">🔔</span>
                 </button>
@@ -83,8 +86,10 @@
         <section class="card video-card">
             <div class="card-header">
                 <div class="card-title">
-                    <span class="icon">📹</span>
-                    <h2>Live Neural Camera Feed</h2>
+                    <span class="card-title-icon">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                    </span>
+                    <h2>Camera Stream</h2>
                 </div>
                 <div class="stream-indicators">
                     <span class="badge badge-live">LIVE</span>
@@ -97,11 +102,13 @@
                 <video id="clientWebcamVideo" autoplay playsinline muted class="video-element" style="display:none; transform: scaleX(-1); object-fit: cover; width:100%; height:100%;"></video>
                 
                 <!-- Cloud Camera Permission Prompt Overlay -->
-                <div id="cameraPermissionPrompt" style="display:none; position:absolute; inset:0; background:rgba(15,23,42,0.85); backdrop-filter:blur(8px); flex-direction:column; align-items:center; justify-content:center; gap:10px; z-index:20; text-align:center; padding:18px;">
-                    <span style="font-size:2rem;">📷</span>
-                    <h3 style="margin:0; font-family:var(--font-heading); color:#fff; font-size:1.05rem;">Enable Browser Camera</h3>
-                    <p style="margin:0; font-size:0.78rem; color:var(--text-muted); max-width:260px;">Cloud deployment detected. Click below to allow camera access in your browser.</p>
-                    <button id="btnAllowCamera" class="btn btn-primary" style="padding:8px 18px; font-size:0.85rem; border-radius:6px; cursor:pointer;">▶ Allow Camera</button>
+                <div id="cameraPermissionPrompt" style="display:none; position:absolute; inset:0; background:rgba(10,13,20,0.9); backdrop-filter:blur(10px); flex-direction:column; align-items:center; justify-content:center; gap:12px; z-index:20; text-align:center; padding:20px;">
+                    <div style="width:44px; height:44px; border-radius:12px; background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.3); display:flex; align-items:center; justify-content:center; color:#38bdf8;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                    </div>
+                    <h3 style="margin:0; font-family:var(--font-heading); color:#fff; font-size:1.05rem; font-weight:600;">Browser Camera Access</h3>
+                    <p style="margin:0; font-size:0.8rem; color:var(--text-muted); max-width:280px; line-height:1.4;">Click below to enable camera access in your browser.</p>
+                    <button id="btnAllowCamera" class="btn btn-primary" style="padding:8px 20px; font-size:0.85rem; border-radius:8px; cursor:pointer; font-weight:500;">Allow Camera</button>
                 </div>
 
                 <!-- HUD Overlay Pill -->
@@ -123,18 +130,18 @@
                 <!-- Distraction Visual Alert Banner -->
                 <div class="alert-banner hidden" id="distractionAlertBanner">
                     <span class="alert-icon">⚠️</span>
-                    <span class="alert-text">DISTRACTION DETECTED - PLEASE FOCUS</span>
+                    <span class="alert-text">DISTRACTION DETECTED</span>
                 </div>
             </div>
 
             <!-- Video Quick Controls & State -->
             <div class="video-footer">
                 <div class="footer-stat">
-                    <span class="label">Dominant Emotion:</span>
+                    <span class="label">Expression:</span>
                     <span class="value text-accent" id="footerEmotion">Neutral (100%)</span>
                 </div>
                 <div class="footer-stat">
-                    <span class="label">Blink Rate:</span>
+                    <span class="label">Blinks:</span>
                     <span class="value" id="footerBlinks">0 / min</span>
                 </div>
             </div>
@@ -146,8 +153,10 @@
             <div class="card attention-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <span class="icon">🧠</span>
-                        <h2>Attentiveness Level</h2>
+                        <span class="card-title-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </span>
+                        <h2>Focus Index</h2>
                     </div>
                     <span class="status-pill status-focused" id="attentionPill">FOCUSED</span>
                 </div>
@@ -175,7 +184,7 @@
                             <span class="val" id="miniBlinks">0</span>
                         </div>
                         <div class="mini-stat-box">
-                            <span class="title">Pitch / Yaw</span>
+                            <span class="title">Head Angle</span>
                             <span class="val" id="miniHeadPose">0.0° / 0.0°</span>
                         </div>
                     </div>
@@ -186,13 +195,15 @@
             <div class="card chart-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <span class="icon">📈</span>
-                        <h2>Attention Timeline (Live 60s)</h2>
+                        <span class="card-title-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        </span>
+                        <h2>Focus Timeline (Live)</h2>
                     </div>
                     <div class="chart-legend-custom">
-                        <span class="dot dot-focused"></span> Focused (≥75%)
-                        <span class="dot dot-partial"></span> Partial (45-74%)
-                        <span class="dot dot-distracted"></span> Distracted (&lt;45%)
+                        <span class="dot dot-focused"></span> Focused
+                        <span class="dot dot-partial"></span> Partial
+                        <span class="dot dot-distracted"></span> Distracted
                     </div>
                 </div>
                 <div class="chart-container">
@@ -207,11 +218,13 @@
             <div class="card emotion-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <span class="icon">🎭</span>
-                        <h2>Emotion Spectrum</h2>
+                        <span class="card-title-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                        </span>
+                        <h2>Expression Analysis</h2>
                     </div>
                     <div class="confidence-badge" id="confidenceBadge">
-                        Conf: 98%
+                        Conf: 100%
                     </div>
                 </div>
 
@@ -219,7 +232,6 @@
                     <!-- Dynamic Emotion Items -->
                     <div class="emotion-row" data-emotion="Happy">
                         <div class="emotion-info">
-                            <span class="emotion-icon">😄</span>
                             <span class="emotion-name">Happy</span>
                             <span class="emotion-val" id="val-Happy">0%</span>
                         </div>
@@ -230,7 +242,6 @@
 
                     <div class="emotion-row" data-emotion="Sad">
                         <div class="emotion-info">
-                            <span class="emotion-icon">😢</span>
                             <span class="emotion-name">Sad</span>
                             <span class="emotion-val" id="val-Sad">0%</span>
                         </div>
@@ -241,7 +252,6 @@
 
                     <div class="emotion-row" data-emotion="Angry">
                         <div class="emotion-info">
-                            <span class="emotion-icon">😠</span>
                             <span class="emotion-name">Angry</span>
                             <span class="emotion-val" id="val-Angry">0%</span>
                         </div>
@@ -252,7 +262,6 @@
 
                     <div class="emotion-row" data-emotion="Surprised">
                         <div class="emotion-info">
-                            <span class="emotion-icon">😲</span>
                             <span class="emotion-name">Surprised</span>
                             <span class="emotion-val" id="val-Surprised">0%</span>
                         </div>
@@ -263,7 +272,6 @@
 
                     <div class="emotion-row" data-emotion="Fear">
                         <div class="emotion-info">
-                            <span class="emotion-icon">😨</span>
                             <span class="emotion-name">Fear</span>
                             <span class="emotion-val" id="val-Fear">0%</span>
                         </div>
@@ -274,7 +282,6 @@
 
                     <div class="emotion-row" data-emotion="Neutral">
                         <div class="emotion-info">
-                            <span class="emotion-icon">😐</span>
                             <span class="emotion-name">Neutral</span>
                             <span class="emotion-val" id="val-Neutral">100%</span>
                         </div>
@@ -289,8 +296,10 @@
             <div class="card spatial-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <span class="icon">🎯</span>
-                        <h2>Gaze & Head Orientation</h2>
+                        <span class="card-title-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+                        </span>
+                        <h2>Gaze & Orientation</h2>
                     </div>
                     <span class="badge" id="gazeDirectionBadge">Looking Center</span>
                 </div>
