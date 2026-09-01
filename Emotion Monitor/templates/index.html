@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Emotion & Attention Monitor | Real-Time Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Chart.js for real-time history -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=3.3">
+</head>
+<body class="theme-dark">
+    <!-- Unified Sleek Top Navigation Bar -->
+    <header class="app-header">
+        <div class="nav-brand-group">
+            <div class="logo-badge">
+                <div class="pulse-indicator"></div>
+                <span class="logo-icon">👁️</span>
+            </div>
+            <div class="brand-text">
+                <span class="brand-title">EMOTION<span class="brand-accent">MONITOR</span></span>
+                <span class="brand-tag">AI CORE</span>
+            </div>
+        </div>
+
+        <!-- Integrated Clean Tabs Pill Bar -->
+        <nav class="header-nav-tabs">
+            <button class="nav-tab-btn active" data-tab="tab-live">
+                <span class="tab-icon">👁️</span> Live Monitor
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-sessions">
+                <span class="tab-icon">⏱️</span> Sessions
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-analytics">
+                <span class="tab-icon">📊</span> Analytics
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-reports">
+                <span class="tab-icon">📄</span> Reports
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-ml">
+                <span class="tab-icon">🤖</span> ML Intelligence
+            </button>
+        </nav>
+
+        <!-- Live Status & Telemetry -->
+        <div class="header-telemetry">
+            <div class="status-chip" id="globalStatusChip">
+                <span class="dot"></span>
+                <span class="text" id="globalStatusText">CALIBRATING</span>
+            </div>
+            <div class="telemetry-pill">
+                <span class="pill-item">⏱️ <span id="sessionTimer">00:00:00</span></span>
+                <span class="pill-divider">/</span>
+                <span class="pill-item"><span id="fpsDisplay">0.0</span> <small>FPS</small></span>
+            </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="header-actions">
+            <button class="btn btn-session-start" id="btnFrontStartSession" title="Start a new monitoring session">
+                <span>▶</span> Start Session
+            </button>
+            <button class="btn btn-session-end" id="btnFrontEndSession" style="display: none;" title="End active monitoring session and view analysis">
+                <span class="recording-indicator-dot"></span> End Session
+            </button>
+            <div class="btn-group">
+                <button class="btn btn-tool" id="btnToggleMesh" title="Toggle Face Mesh overlay">✨ Mesh</button>
+                <button class="btn btn-tool" id="btnRecalibrate" title="Recalibrate neutral eye direction">🎯 Calibrate</button>
+                <button class="btn btn-tool" id="btnResetSession" title="Reset current session statistics">🔄 Reset</button>
+                <button class="btn btn-tool btn-icon-only" id="btnAudioToggle" title="Toggle distraction audio alert">
+                    <span id="audioIcon">🔔</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab 1: Live Vision Dashboard (Single Slide 3-Column View) -->
+    <main class="dashboard-container tab-pane active" id="tab-live">
+        <!-- Left Column: Video & Stream Viewport -->
+        <section class="card video-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="icon">📹</span>
+                    <h2>Live Neural Camera Feed</h2>
+                </div>
+                <div class="stream-indicators">
+                    <span class="badge badge-live">LIVE</span>
+                    <span class="badge badge-subtle" id="faceCountBadge">1 Face</span>
+                </div>
+            </div>
+            
+            <div class="video-viewport">
+                <img id="videoStream" src="/video_feed" alt="Real-time Video Feed" class="video-element" />
+                
+                <!-- HUD Overlay Pill -->
+                <div class="hud-overlay" id="hudOverlay">
+                    <div class="hud-item">
+                        <span class="hud-label">GAZE</span>
+                        <span class="hud-val" id="hudGaze">Looking Center</span>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-label">EYES</span>
+                        <span class="hud-val" id="hudEyes">Open</span>
+                    </div>
+                    <div class="hud-item">
+                        <span class="hud-label">DISTRACTION</span>
+                        <span class="hud-val" id="hudDistraction">0.0s</span>
+                    </div>
+                </div>
+
+                <!-- Distraction Visual Alert Banner -->
+                <div class="alert-banner hidden" id="distractionAlertBanner">
+                    <span class="alert-icon">⚠️</span>
+                    <span class="alert-text">DISTRACTION DETECTED - PLEASE FOCUS</span>
+                </div>
+            </div>
+
+            <!-- Video Quick Controls & State -->
+            <div class="video-footer">
+                <div class="footer-stat">
+                    <span class="label">Dominant Emotion:</span>
+                    <span class="value text-accent" id="footerEmotion">Neutral (100%)</span>
+                </div>
+                <div class="footer-stat">
+                    <span class="label">Blink Rate:</span>
+                    <span class="value" id="footerBlinks">0 / min</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Middle Column: Attention Analytics & Real-Time Chart -->
+        <section class="middle-column">
+            <!-- Attention Score Card with Circular Arc Gauge -->
+            <div class="card attention-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">🧠</span>
+                        <h2>Attentiveness Level</h2>
+                    </div>
+                    <span class="status-pill status-focused" id="attentionPill">FOCUSED</span>
+                </div>
+
+                <div class="gauge-wrapper">
+                    <div class="circular-gauge">
+                        <svg viewBox="0 0 200 200" class="gauge-svg">
+                            <circle class="gauge-bg" cx="100" cy="100" r="80"></circle>
+                            <circle class="gauge-progress" id="gaugeProgress" cx="100" cy="100" r="80" stroke-dasharray="502.6" stroke-dashoffset="0"></circle>
+                        </svg>
+                        <div class="gauge-content">
+                            <span class="gauge-number" id="attentionScore">100</span>
+                            <span class="gauge-percent">%</span>
+                            <span class="gauge-label" id="attentionLabel">Optimal Focus</span>
+                        </div>
+                    </div>
+
+                    <div class="attention-mini-stats">
+                        <div class="mini-stat-box">
+                            <span class="title">Status</span>
+                            <span class="val" id="miniStatus">FOCUSED</span>
+                        </div>
+                        <div class="mini-stat-box">
+                            <span class="title">Blinks</span>
+                            <span class="val" id="miniBlinks">0</span>
+                        </div>
+                        <div class="mini-stat-box">
+                            <span class="title">Pitch / Yaw</span>
+                            <span class="val" id="miniHeadPose">0.0° / 0.0°</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attention Live Timeline Graph -->
+            <div class="card chart-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">📈</span>
+                        <h2>Attention Timeline (Live 60s)</h2>
+                    </div>
+                    <div class="chart-legend-custom">
+                        <span class="dot dot-focused"></span> Focused (≥75%)
+                        <span class="dot dot-partial"></span> Partial (45-74%)
+                        <span class="dot dot-distracted"></span> Distracted (&lt;45%)
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="attentionChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Emotion Analysis & Spatial Gaze -->
+        <section class="right-column">
+            <!-- Emotion Probabilities -->
+            <div class="card emotion-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">🎭</span>
+                        <h2>Emotion Spectrum</h2>
+                    </div>
+                    <div class="confidence-badge" id="confidenceBadge">
+                        Conf: 98%
+                    </div>
+                </div>
+
+                <div class="emotion-bars-container" id="emotionBars">
+                    <!-- Dynamic Emotion Items -->
+                    <div class="emotion-row" data-emotion="Happy">
+                        <div class="emotion-info">
+                            <span class="emotion-icon">😄</span>
+                            <span class="emotion-name">Happy</span>
+                            <span class="emotion-val" id="val-Happy">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-happy" id="bar-Happy" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="emotion-row" data-emotion="Sad">
+                        <div class="emotion-info">
+                            <span class="emotion-icon">😢</span>
+                            <span class="emotion-name">Sad</span>
+                            <span class="emotion-val" id="val-Sad">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-sad" id="bar-Sad" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="emotion-row" data-emotion="Angry">
+                        <div class="emotion-info">
+                            <span class="emotion-icon">😠</span>
+                            <span class="emotion-name">Angry</span>
+                            <span class="emotion-val" id="val-Angry">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-angry" id="bar-Angry" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="emotion-row" data-emotion="Surprised">
+                        <div class="emotion-info">
+                            <span class="emotion-icon">😲</span>
+                            <span class="emotion-name">Surprised</span>
+                            <span class="emotion-val" id="val-Surprised">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-surprised" id="bar-Surprised" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="emotion-row" data-emotion="Fear">
+                        <div class="emotion-info">
+                            <span class="emotion-icon">😨</span>
+                            <span class="emotion-name">Fear</span>
+                            <span class="emotion-val" id="val-Fear">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-fear" id="bar-Fear" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="emotion-row" data-emotion="Neutral">
+                        <div class="emotion-info">
+                            <span class="emotion-icon">😐</span>
+                            <span class="emotion-name">Neutral</span>
+                            <span class="emotion-val" id="val-Neutral">100%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-neutral" id="bar-Neutral" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gaze Target & Head Pose Visualizer -->
+            <div class="card spatial-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">🎯</span>
+                        <h2>Gaze & Head Orientation</h2>
+                    </div>
+                    <span class="badge" id="gazeDirectionBadge">Looking Center</span>
+                </div>
+
+                <div class="spatial-grid">
+                    <!-- Gaze Radar Target -->
+                    <div class="radar-box">
+                        <span class="radar-title">Eye Gaze Vector</span>
+                        <div class="radar-circle">
+                            <div class="radar-crosshair-h"></div>
+                            <div class="radar-crosshair-v"></div>
+                            <div class="radar-center-ring"></div>
+                            <div class="radar-target-dot" id="radarDot"></div>
+                        </div>
+                        <div class="radar-coords">
+                            <span>H: <b id="gazeHCoord">0.50</b></span>
+                            <span>V: <b id="gazeVCoord">0.50</b></span>
+                        </div>
+                    </div>
+
+                    <!-- Head Pose Indicators -->
+                    <div class="pose-box">
+                        <span class="radar-title">Head Orientation</span>
+                        <div class="pose-meter-group">
+                            <div class="meter-item">
+                                <span class="m-label">Yaw (Turn)</span>
+                                <div class="meter-track">
+                                    <div class="meter-thumb" id="yawThumb"></div>
+                                </div>
+                                <span class="m-val" id="yawVal">0.00</span>
+                            </div>
+                            <div class="meter-item">
+                                <span class="m-label">Pitch (Tilt)</span>
+                                <div class="meter-track">
+                                    <div class="meter-thumb" id="pitchThumb"></div>
+                                </div>
+                                <span class="m-val" id="pitchVal">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Session Stats Summary Card -->
+            <div class="card session-summary-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">📊</span>
+                        <h2>Session Aggregate</h2>
+                    </div>
+                </div>
+
+                <div class="stats-summary-grid">
+                    <div class="summary-stat-item stat-focused">
+                        <span class="num" id="statFocusedPct">0%</span>
+                        <span class="desc">Focused Time</span>
+                    </div>
+                    <div class="summary-stat-item stat-partial">
+                        <span class="num" id="statPartialPct">0%</span>
+                        <span class="desc">Partial Focus</span>
+                    </div>
+                    <div class="summary-stat-item stat-distracted">
+                        <span class="num" id="statDistractedPct">0%</span>
+                        <span class="desc">Distracted</span>
+                    </div>
+                    <div class="summary-stat-item">
+                        <span class="num" id="statTotalFrames">0</span>
+                        <span class="desc">Processed Frames</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Tab 2: Session Hub (Management & Database) -->
+    <section class="tab-pane" id="tab-sessions">
+        <div class="extended-grid">
+            <!-- Active Session Controller Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">⏱️</span>
+                        <h2>Session Management Controller</h2>
+                    </div>
+                    <span class="status-pill status-focused" id="sessionManagerStatusPill">IDLE</span>
+                </div>
+                <div style="padding: 18px;">
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0;">
+                        Create a designated focus monitoring session. Metrics from the Video Analyzer are sampled and logged to SQLite in the background without affecting video latency.
+                    </p>
+                    <div class="input-group">
+                        <input type="text" id="inputSessionTitle" class="input-text" placeholder="Session Title (e.g. Deep Study, Coding Sprint)" value="Focus Session" />
+                        <button class="btn btn-primary" id="btnStartNewSession">▶ Start Session</button>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 14px;">
+                        <button class="btn btn-secondary" id="btnPauseSession" style="flex: 1;">⏸ Pause</button>
+                        <button class="btn btn-secondary" id="btnResumeSession" style="flex: 1;">▶ Resume</button>
+                        <button class="btn btn-danger" id="btnEndSession" style="flex: 1;">⏹ End Session</button>
+                    </div>
+
+                    <!-- Live Session Info Widget -->
+                    <div style="margin-top: 20px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 600; font-size: 0.9rem; color: #38bdf8;" id="activeSessionTitleDisplay">No Active Session</span>
+                            <span style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);" id="activeSessionDurationDisplay">00:00:00</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; text-align: center;">
+                            <div>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Samples</span>
+                                <b id="activeSessionSamples" style="font-family: var(--font-mono); color: #fff;">0</b>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Avg Attention</span>
+                                <b id="activeSessionAvgAttn" style="font-family: var(--font-mono); color: #10b981;">100%</b>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Distraction Events</span>
+                                <b id="activeSessionDistractions" style="font-family: var(--font-mono); color: #ef4444;">0</b>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Database Sessions Log Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">💾</span>
+                        <h2>Stored Sessions History</h2>
+                    </div>
+                    <button class="btn btn-secondary" id="btnRefreshSessionsList" style="padding: 4px 10px; font-size: 0.75rem;">↻ Refresh</button>
+                </div>
+                <div style="padding: 18px;">
+                    <div class="data-table-wrapper" style="max-height: 380px; overflow-y: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Session Title</th>
+                                    <th>Duration</th>
+                                    <th>Avg Attn</th>
+                                    <th>Dominant Expr</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sessionsTableBody">
+                                <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No sessions recorded yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tab 3: Advanced Analytics & Neural Trends -->
+    <section class="tab-pane" id="tab-analytics">
+        <!-- 1. Top KPI Summary Cards Row -->
+        <div class="analytics-kpi-grid">
+            <div class="kpi-card card-kpi-green">
+                <div class="kpi-header">
+                    <span class="kpi-title">Overall Mean Attention</span>
+                    <span class="kpi-icon">🧠</span>
+                </div>
+                <div class="kpi-body">
+                    <h2 id="analyticsOverallAvg">100%</h2>
+                    <span class="kpi-badge badge-green" id="kpiAvgStatus">Optimal</span>
+                </div>
+                <span class="kpi-sub">Weighted across all monitored sessions</span>
+            </div>
+
+            <div class="kpi-card card-kpi-cyan">
+                <div class="kpi-header">
+                    <span class="kpi-title">Peak Focus Achieved</span>
+                    <span class="kpi-icon">⭐</span>
+                </div>
+                <div class="kpi-body">
+                    <h2 id="analyticsPeakScore">100%</h2>
+                    <span class="kpi-badge badge-cyan">Top Record</span>
+                </div>
+                <span class="kpi-sub">Highest recorded session focus</span>
+            </div>
+
+            <div class="kpi-card card-kpi-blue">
+                <div class="kpi-header">
+                    <span class="kpi-title">Total Monitored Time</span>
+                    <span class="kpi-icon">⏱️</span>
+                </div>
+                <div class="kpi-body">
+                    <h2 id="analyticsTotalTime">0.0 mins</h2>
+                    <span class="kpi-badge badge-blue">Real-time</span>
+                </div>
+                <span class="kpi-sub">Cumulative eye & head tracking</span>
+            </div>
+
+            <div class="kpi-card card-kpi-purple">
+                <div class="kpi-header">
+                    <span class="kpi-title">Total Sessions</span>
+                    <span class="kpi-icon">📊</span>
+                </div>
+                <div class="kpi-body">
+                    <h2 id="analyticsCompletedSessions">0</h2>
+                    <span class="kpi-badge badge-purple">Logged</span>
+                </div>
+                <span class="kpi-sub">Saved in SQLite database</span>
+            </div>
+
+            <div class="kpi-card card-kpi-amber">
+                <div class="kpi-header">
+                    <span class="kpi-title">Distraction Events</span>
+                    <span class="kpi-icon">⚠️</span>
+                </div>
+                <div class="kpi-body">
+                    <h2 id="analyticsDistractionCount">0</h2>
+                    <span class="kpi-badge badge-amber" id="analyticsDistractionTime">0s total</span>
+                </div>
+                <span class="kpi-sub">Gaze deviations ≥ 2.0s</span>
+            </div>
+        </div>
+
+        <!-- 2. Interactive Charts & Distributions Row -->
+        <div class="analytics-charts-grid">
+            <!-- Focus Score Trends Over Time -->
+            <div class="card analytics-chart-main">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">📈</span>
+                        <h2>Session Focus Score Trends & History</h2>
+                    </div>
+                    <div class="trend-legend">
+                        <span class="dot" style="background: #38bdf8;"></span> Average Attention %
+                    </div>
+                </div>
+                <div class="chart-box-large">
+                    <canvas id="historicalTrendsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Aggregate Attention Distribution Doughnut -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">🎯</span>
+                        <h2>Attention Distribution</h2>
+                    </div>
+                </div>
+                <div class="doughnut-container">
+                    <canvas id="aggregateDoughnutChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Deep Emotional Spectrum & Gaze Multi-Breakdown Row -->
+        <div class="analytics-deep-grid">
+            <!-- Emotional Reactions Aggregate -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">🎭</span>
+                        <h2>All-Time Emotional Reactions Share</h2>
+                    </div>
+                </div>
+                <div class="analytics-breakdown-list" id="analyticsExpressionBars">
+                    <!-- Dynamic Emotion Bars -->
+                </div>
+            </div>
+
+            <!-- Spatial Gaze Directions Aggregate -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">👁️</span>
+                        <h2>Spatial Gaze Orientation Share</h2>
+                    </div>
+                </div>
+                <div class="analytics-breakdown-list" id="analyticsGazeBars">
+                    <!-- Dynamic Gaze Bars -->
+                </div>
+            </div>
+
+            <!-- Sessions Quick Drill-Down List -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">📑</span>
+                        <h2>Recent Recorded Sessions</h2>
+                    </div>
+                </div>
+                <div class="recent-sessions-mini-table-container">
+                    <table class="data-table mini-table">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Score</th>
+                                <th>Emotion</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analyticsSessionsMiniBody">
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Loading sessions...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tab 4: Session Reports & Export -->
+    <section class="tab-pane" id="tab-reports">
+        <div class="extended-grid">
+            <div class="card full-width-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">📄</span>
+                        <h2>Session Report Generator</h2>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="reportSessionSelect" class="input-text" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">
+                            <option value="">Select a session...</option>
+                        </select>
+                        <button class="btn btn-secondary" id="btnExportCsv" style="padding: 6px 12px; font-size: 0.8rem;">📥 CSV</button>
+                        <button class="btn btn-secondary" id="btnExportHtml" style="padding: 6px 12px; font-size: 0.8rem;">🖨️ Printable HTML</button>
+                    </div>
+                </div>
+                <div style="padding: 18px;">
+                    <div class="report-terminal" id="reportTerminal">Select a session above to generate summary report.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tab 5: ML Intelligence & Prediction -->
+    <section class="tab-pane" id="tab-ml">
+        <div class="extended-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">🤖</span>
+                        <h2>Engagement Classifier Model</h2>
+                    </div>
+                    <span class="status-pill status-calibrating" id="mlModelStatusPill">MODEL READY</span>
+                </div>
+                <div style="padding: 18px;">
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0;">
+                        Trains a Scikit-learn Random Forest model directly on numerical features extracted from the Video Analyzer (gaze, head pose, blink rates, and attention).
+                    </p>
+                    
+                    <button class="btn btn-primary" id="btnTrainMLModel" style="width: 100%;">⚡ Train / Re-train Model</button>
+                    
+                    <div class="ml-metric-grid" id="mlMetricsGrid">
+                        <div class="ml-metric-card">
+                            <span class="title">Accuracy</span>
+                            <div class="value" id="mlAccuracy">--</div>
+                        </div>
+                        <div class="ml-metric-card">
+                            <span class="title">Dataset Size</span>
+                            <div class="value" id="mlDatasetSize" style="color: #38bdf8;">--</div>
+                        </div>
+                        <div class="ml-metric-card">
+                            <span class="title">Train Size</span>
+                            <div class="value" id="mlTrainSize" style="color: #10b981;">--</div>
+                        </div>
+                        <div class="ml-metric-card">
+                            <span class="title">Test Size</span>
+                            <div class="value" id="mlTestSize" style="color: #f59e0b;">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature Importance & Live Prediction -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span class="icon">🔬</span>
+                        <h2>Feature Importance & Live Inference</h2>
+                    </div>
+                </div>
+                <div style="padding: 18px;">
+                    <div style="background: rgba(15, 23, 42, 0.6); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Live ML Predicted Engagement</span>
+                            <h3 id="mlLivePrediction" style="margin: 4px 0 0; color: #10b981; font-family: var(--font-heading);">High (98% Conf)</h3>
+                        </div>
+                        <button class="btn btn-secondary" id="btnTestInference" style="padding: 6px 12px; font-size: 0.8rem;">Test Inference</button>
+                    </div>
+
+                    <h4 style="color: var(--text-secondary); font-size: 0.8rem; margin: 18px 0 8px; text-transform: uppercase;">Feature Importance Breakdown</h4>
+                    <div id="mlFeatureImportanceBars" style="display: flex; flex-direction: column; gap: 8px;">
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">Train model to see feature weights.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Session Analysis Modal Dialog -->
+    <div class="modal-backdrop" id="sessionAnalysisModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2><span>📊</span> Session Analysis & Analytics Summary</h2>
+                <button class="modal-close-btn" id="btnCloseAnalysisModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <div>
+                        <h3 id="modalSessionTitle" style="margin: 0; color: #38bdf8; font-size: 1.15rem;">Focus Session</h3>
+                        <span id="modalSessionDate" style="color: var(--text-muted); font-size: 0.78rem;">2026-09-01</span>
+                    </div>
+                    <span class="status-pill status-focused" id="modalSessionStatusPill">COMPLETED</span>
+                </div>
+
+                <!-- Hero Metrics -->
+                <div class="modal-score-hero">
+                    <div class="modal-hero-item">
+                        <span class="hero-label">Duration</span>
+                        <div class="hero-val" id="modalHeroDuration" style="color: #38bdf8;">0.0m</div>
+                    </div>
+                    <div class="modal-hero-item">
+                        <span class="hero-label">Average Attention</span>
+                        <div class="hero-val" id="modalHeroAvgAttn" style="color: #10b981;">100%</div>
+                    </div>
+                    <div class="modal-hero-item">
+                        <span class="hero-label">Stability Index</span>
+                        <div class="hero-val" id="modalHeroStability" style="color: #a855f7;">100/100</div>
+                    </div>
+                </div>
+
+                <!-- Attention States Breakdown -->
+                <div>
+                    <div class="modal-section-title"><span>🎯</span> Attention State Distribution</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 10px; border-radius: 6px; text-align: center; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <span style="font-size: 0.7rem; color: var(--color-focused); font-weight: 600;">FOCUSED</span>
+                            <div id="modalPctFocused" style="font-family: var(--font-heading); font-size: 1.2rem; font-weight: 800; color: #fff; margin-top: 2px;">0%</div>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 10px; border-radius: 6px; text-align: center; border: 1px solid rgba(245, 158, 11, 0.2);">
+                            <span style="font-size: 0.7rem; color: var(--color-partial); font-weight: 600;">PARTIAL</span>
+                            <div id="modalPctPartial" style="font-family: var(--font-heading); font-size: 1.2rem; font-weight: 800; color: #fff; margin-top: 2px;">0%</div>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 10px; border-radius: 6px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);">
+                            <span style="font-size: 0.7rem; color: var(--color-distracted); font-weight: 600;">DISTRACTED</span>
+                            <div id="modalPctDistracted" style="font-family: var(--font-heading); font-size: 1.2rem; font-weight: 800; color: #fff; margin-top: 2px;">0%</div>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 10px; border-radius: 6px; text-align: center; border: 1px solid rgba(100, 116, 139, 0.2);">
+                            <span style="font-size: 0.7rem; color: var(--color-noface); font-weight: 600;">NO FACE</span>
+                            <div id="modalPctNoFace" style="font-family: var(--font-heading); font-size: 1.2rem; font-weight: 800; color: #fff; margin-top: 2px;">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expressions & Gaze Breakdown -->
+                <div class="modal-breakdown-grid">
+                    <div>
+                        <div class="modal-section-title"><span>🎭</span> Detected Expressions</div>
+                        <div id="modalExpressionList" style="display: flex; flex-direction: column; gap: 6px; background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 6px;">
+                            <!-- Dynamic items -->
+                        </div>
+                    </div>
+                    <div>
+                        <div class="modal-section-title"><span>👁️</span> Spatial Gaze Distribution</div>
+                        <div id="modalGazeList" style="display: flex; flex-direction: column; gap: 6px; background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 6px;">
+                            <!-- Dynamic items -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Insights & Events -->
+                <div>
+                    <div class="modal-section-title"><span>⚡</span> Key Engagement Insights</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 6px;">
+                        <div>
+                            <span style="font-size: 0.7rem; color: var(--text-muted); display: block;">Longest Focus Streak</span>
+                            <b id="modalInsightStreak" style="font-family: var(--font-mono); color: #38bdf8;">0s</b>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.7rem; color: var(--text-muted); display: block;">Distraction Events</span>
+                            <b id="modalInsightDistractions" style="font-family: var(--font-mono); color: #f87171;">0 times</b>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.7rem; color: var(--text-muted); display: block;">Prolonged Closures</span>
+                            <b id="modalInsightClosures" style="font-family: var(--font-mono); color: #fbbf24;">0 times</b>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnModalDownloadCsv">📥 Download CSV</button>
+                <button class="btn btn-secondary" id="btnModalPrintableHtml">🖨️ Printable Report</button>
+                <button class="btn btn-primary" id="btnModalCloseDone">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Beep Generator for Distraction Alert -->
+    <audio id="distractionAudio" preload="auto">
+        <source src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..." type="audio/wav">
+    </audio>
+
+    <script src="/static/js/app.js?v=3.3"></script>
+</body>
+</html>
