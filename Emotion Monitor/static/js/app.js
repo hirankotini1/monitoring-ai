@@ -10,13 +10,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const fpsDisplay = document.getElementById('fpsDisplay');
     const faceCountBadge = document.getElementById('faceCountBadge');
     
-    // Video Stream Element
+    // Video Stream Element & Cloud Client Webcam Fallback
     const videoStream = document.getElementById('videoStream');
-    if (videoStream) {
+    const clientWebcamVideo = document.getElementById('clientWebcamVideo');
+
+    function startClientWebcam() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+                .then(stream => {
+                    if (videoStream) videoStream.style.display = 'none';
+                    if (clientWebcamVideo) {
+                        clientWebcamVideo.style.display = 'block';
+                        clientWebcamVideo.srcObject = stream;
+                    }
+                })
+                .catch(err => {
+                    console.warn('Browser webcam access denied or unavailable:', err);
+                });
+        }
+    }
+
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        // Cloud environment (Render/AWS/etc.) - use client browser camera!
+        startClientWebcam();
+    } else if (videoStream) {
         videoStream.onerror = () => {
-            setTimeout(() => {
-                videoStream.src = '/video_feed?t=' + Date.now();
-            }, 1000);
+            startClientWebcam();
         };
     }
 
