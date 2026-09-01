@@ -673,9 +673,7 @@ def api_process_frame():
         if raw_frame is None:
             return jsonify(monitor.get_metrics())
         
-        frame = cv2.resize(raw_frame, (CAMERA_W, CAMERA_H))
-        frame = cv2.flip(frame, 1)
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(raw_frame, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         
         now_ms = int(time.time() * 1000)

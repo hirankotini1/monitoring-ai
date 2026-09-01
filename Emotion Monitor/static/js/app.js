@@ -17,19 +17,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAllowCamera = document.getElementById('btnAllowCamera');
 
     let isStreamingFrames = false;
+    let isRequestInFlight = false;
     const offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = 320;
-    offscreenCanvas.height = 240;
-    const offscreenCtx = offscreenCanvas.getContext('2d');
+    offscreenCanvas.width = 240;
+    offscreenCanvas.height = 180;
+    const offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 
     async function streamCloudFrames() {
         if (!isStreamingFrames || !clientWebcamVideo || clientWebcamVideo.paused || clientWebcamVideo.ended) {
-            if (isStreamingFrames) setTimeout(streamCloudFrames, 100);
+            if (isStreamingFrames) setTimeout(streamCloudFrames, 50);
             return;
         }
+
+        if (isRequestInFlight) {
+            setTimeout(streamCloudFrames, 15);
+            return;
+        }
+
+        isRequestInFlight = true;
         try {
-            offscreenCtx.drawImage(clientWebcamVideo, 0, 0, 320, 240);
-            const dataUrl = offscreenCanvas.toDataURL('image/jpeg', 0.5);
+            offscreenCtx.drawImage(clientWebcamVideo, 0, 0, 240, 180);
+            const dataUrl = offscreenCanvas.toDataURL('image/jpeg', 0.4);
             const res = await fetch('/api/process_frame', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -40,10 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderMetricsData(metrics);
             }
         } catch (e) {
-            // network retry
+            // network transient
+        } finally {
+            isRequestInFlight = false;
         }
+
         if (isStreamingFrames) {
-            setTimeout(streamCloudFrames, 80);
+            setTimeout(streamCloudFrames, 10); // immediate pipelining for maximum FPS
         }
     }
 
