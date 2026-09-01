@@ -16,6 +16,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const cameraPrompt = document.getElementById('cameraPermissionPrompt');
     const btnAllowCamera = document.getElementById('btnAllowCamera');
 
+    let isStreamingFrames = false;
+    const offscreenCanvas = document.createElement('canvas');
+    offscreenCanvas.width = 320;
+    offscreenCanvas.height = 240;
+    const offscreenCtx = offscreenCanvas.getContext('2d');
+
+    async function streamCloudFrames() {
+        if (!isStreamingFrames || !clientWebcamVideo || clientWebcamVideo.paused || clientWebcamVideo.ended) {
+            if (isStreamingFrames) setTimeout(streamCloudFrames, 100);
+            return;
+        }
+        try {
+            offscreenCtx.drawImage(clientWebcamVideo, 0, 0, 320, 240);
+            const dataUrl = offscreenCanvas.toDataURL('image/jpeg', 0.5);
+            const res = await fetch('/api/process_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataUrl })
+            });
+            if (res.ok) {
+                const metrics = await res.json();
+                renderMetricsData(metrics);
+            }
+        } catch (e) {
+            // network retry
+        }
+        if (isStreamingFrames) {
+            setTimeout(streamCloudFrames, 80);
+        }
+    }
+
     function startClientWebcam() {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
@@ -25,7 +56,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (clientWebcamVideo) {
                         clientWebcamVideo.style.display = 'block';
                         clientWebcamVideo.srcObject = stream;
+                        clientWebcamVideo.play().catch(() => {});
                     }
+                    isStreamingFrames = true;
+                    setTimeout(streamCloudFrames, 300);
                 })
                 .catch(err => {
                     console.warn('Browser webcam access denied or requires user interaction:', err);
@@ -242,119 +276,123 @@ document.addEventListener('DOMContentLoaded', () => {
         return [hrs, mins, secs].map(v => v.toString().padStart(2, '0')).join(':');
     }
 
+    function renderMetricsData(data) {
+        if (!data) return;
+        const status = data.status || 'CALIBRATING';
+        const score = typeof data.attention_score === 'number' ? data.attention_score : 100;
+        const session = data.session || {};
+        const headPose = data.head_pose || { pitch: 0, yaw: 0 };
+        const gazeCoords = data.gaze_coordinates || { h: 0.5, v: 0.5 };
+
+        // Gauge & Chart Update
+        updateGauge(score, status);
+        if (attentionChart) {
+            chartData.shift();
+            chartData.push(score);
+            attentionChart.update();
+        }
+
+        // Status chip
+        if (globalStatusText) globalStatusText.textContent = status;
+        if (globalStatusChip) {
+            globalStatusChip.className = 'status-chip';
+            if (status === 'FOCUSED') globalStatusChip.classList.add('status-focused');
+            else if (status === 'PARTIAL') globalStatusChip.classList.add('status-partial');
+            else if (status === 'DISTRACTED') globalStatusChip.classList.add('status-distracted');
+            else if (status === 'NO FACE') globalStatusChip.classList.add('status-noface');
+        }
+
+        // Attention Pill & Mini Status
+        if (attentionPill) {
+            attentionPill.textContent = status;
+            attentionPill.className = 'status-pill';
+            if (status === 'FOCUSED') attentionPill.classList.add('status-focused');
+            else if (status === 'PARTIAL') attentionPill.classList.add('status-partial');
+            else if (status === 'DISTRACTED') attentionPill.classList.add('status-distracted');
+            else if (status === 'CALIBRATING') attentionPill.classList.add('status-calibrating');
+        }
+        if (miniStatus) miniStatus.textContent = status;
+
+        // Timer & FPS
+        if (sessionTimer) sessionTimer.textContent = formatTime(session.duration_seconds || 0);
+        if (fpsDisplay) fpsDisplay.textContent = (data.fps || 0).toFixed(1);
+        if (faceCountBadge) faceCountBadge.textContent = `${data.faces_detected || 0} Face${data.faces_detected !== 1 ? 's' : ''}`;
+
+        // HUD
+        if (hudGaze) hudGaze.textContent = data.gaze_direction || 'Center';
+        if (hudEyes) hudEyes.textContent = data.eyes_open ? 'Open' : 'Closed';
+        if (hudDistraction) hudDistraction.textContent = `${(data.distraction_duration || 0).toFixed(1)}s`;
+
+        // Distraction Alert Banner
+        if (distractionAlertBanner) {
+            if ((data.distraction_duration || 0) >= 2.5 && status === 'DISTRACTED') {
+                distractionAlertBanner.classList.remove('hidden');
+                playAlertBeep();
+            } else {
+                distractionAlertBanner.classList.add('hidden');
+            }
+        }
+
+        if (footerEmotion) footerEmotion.textContent = `${data.emotion || 'Neutral'} (${data.emotion_confidence || 0}%)`;
+        if (footerBlinks) footerBlinks.textContent = `${session.blinks_per_min || 0} / min`;
+        if (miniBlinks) miniBlinks.textContent = session.blink_count || 0;
+        if (miniHeadPose) miniHeadPose.textContent = `${(headPose.pitch || 0).toFixed(2)} / ${(headPose.yaw || 0).toFixed(2)}`;
+
+        // Emotion spectrum update
+        if (confidenceBadge) confidenceBadge.textContent = `Conf: ${data.emotion_confidence || 0}%`;
+        emotionsList.forEach(em => {
+            const prob = (data.emotion_probabilities && data.emotion_probabilities[em]) || 0;
+            const bar = document.getElementById(`bar-${em}`);
+            const valEl = document.getElementById(`val-${em}`);
+            if (bar) bar.style.width = `${prob}%`;
+            if (valEl) valEl.textContent = `${prob.toFixed(0)}%`;
+        });
+
+        // Spatial Gaze & Head Orientation
+        if (gazeDirectionBadge) gazeDirectionBadge.textContent = data.gaze_direction || 'Looking Center';
+        const h = gazeCoords.h || 0.5;
+        const v = gazeCoords.v || 0.5;
+        if (gazeHCoord) gazeHCoord.textContent = h.toFixed(2);
+        if (gazeVCoord) gazeVCoord.textContent = v.toFixed(2);
+
+        // Gaze Radar Dot position (clamp to 10% .. 90%)
+        if (radarDot) {
+            const dotLeft = Math.max(10, Math.min(90, (1.0 - h) * 100));
+            const dotTop = Math.max(10, Math.min(90, v * 100));
+            radarDot.style.left = `${dotLeft}%`;
+            radarDot.style.top = `${dotTop}%`;
+        }
+
+        // Head pose thumbs (-1 .. +1 mapped to 0% .. 100%)
+        if (yawThumb && pitchThumb) {
+            const yawPct = Math.max(0, Math.min(100, (((headPose.yaw || 0) + 1.0) / 2.0) * 100));
+            const pitchPct = Math.max(0, Math.min(100, (((headPose.pitch || 0) + 1.0) / 2.0) * 100));
+            yawThumb.style.left = `${yawPct}%`;
+            pitchThumb.style.left = `${pitchPct}%`;
+        }
+        if (yawVal) yawVal.textContent = (headPose.yaw || 0).toFixed(2);
+        if (pitchVal) pitchVal.textContent = (headPose.pitch || 0).toFixed(2);
+
+        // Session Aggregate
+        if (statFocusedPct) statFocusedPct.textContent = `${session.focused_pct || 0}%`;
+        if (statPartialPct) statPartialPct.textContent = `${session.partial_pct || 0}%`;
+        if (statDistractedPct) statDistractedPct.textContent = `${session.distracted_pct || 0}%`;
+        if (statTotalFrames) statTotalFrames.textContent = (session.total_frames || 0).toLocaleString();
+
+        if (btnToggleMesh) {
+            if (data.mesh_visible) btnToggleMesh.classList.add('active');
+            else btnToggleMesh.classList.remove('active');
+        }
+    }
+
     // ---------------- Metrics Polling ----------------
     async function fetchMetrics() {
+        if (isStreamingFrames) return; // Cloud frame streamer already updates UI
         try {
             const res = await fetch('/api/metrics');
             if (!res.ok) return;
             const data = await res.json();
-
-            const status = data.status || 'CALIBRATING';
-            const score = typeof data.attention_score === 'number' ? data.attention_score : 100;
-            const session = data.session || {};
-            const headPose = data.head_pose || { pitch: 0, yaw: 0 };
-            const gazeCoords = data.gaze_coordinates || { h: 0.5, v: 0.5 };
-
-            // Gauge & Chart Update
-            updateGauge(score, status);
-            if (attentionChart) {
-                chartData.shift();
-                chartData.push(score);
-                attentionChart.update();
-            }
-
-            // Status chip
-            if (globalStatusText) globalStatusText.textContent = status;
-            if (globalStatusChip) {
-                globalStatusChip.className = 'status-chip';
-                if (status === 'FOCUSED') globalStatusChip.classList.add('status-focused');
-                else if (status === 'PARTIAL') globalStatusChip.classList.add('status-partial');
-                else if (status === 'DISTRACTED') globalStatusChip.classList.add('status-distracted');
-                else if (status === 'NO FACE') globalStatusChip.classList.add('status-noface');
-            }
-
-            // Attention Pill & Mini Status
-            if (attentionPill) {
-                attentionPill.textContent = status;
-                attentionPill.className = 'status-pill';
-                if (status === 'FOCUSED') attentionPill.classList.add('status-focused');
-                else if (status === 'PARTIAL') attentionPill.classList.add('status-partial');
-                else if (status === 'DISTRACTED') attentionPill.classList.add('status-distracted');
-                else if (status === 'CALIBRATING') attentionPill.classList.add('status-calibrating');
-            }
-            if (miniStatus) miniStatus.textContent = status;
-
-            // Timer & FPS
-            if (sessionTimer) sessionTimer.textContent = formatTime(session.duration_seconds || 0);
-            if (fpsDisplay) fpsDisplay.textContent = (data.fps || 0).toFixed(1);
-            if (faceCountBadge) faceCountBadge.textContent = `${data.faces_detected || 0} Face${data.faces_detected !== 1 ? 's' : ''}`;
-
-            // HUD
-            if (hudGaze) hudGaze.textContent = data.gaze_direction || 'Center';
-            if (hudEyes) hudEyes.textContent = data.eyes_open ? 'Open' : 'Closed';
-            if (hudDistraction) hudDistraction.textContent = `${(data.distraction_duration || 0).toFixed(1)}s`;
-
-            // Distraction Alert Banner
-            if (distractionAlertBanner) {
-                if ((data.distraction_duration || 0) >= 2.5 && status === 'DISTRACTED') {
-                    distractionAlertBanner.classList.remove('hidden');
-                    playAlertBeep();
-                } else {
-                    distractionAlertBanner.classList.add('hidden');
-                }
-            }
-
-            if (footerEmotion) footerEmotion.textContent = `${data.emotion || 'Neutral'} (${data.emotion_confidence || 0}%)`;
-            if (footerBlinks) footerBlinks.textContent = `${session.blinks_per_min || 0} / min`;
-            if (miniBlinks) miniBlinks.textContent = session.blink_count || 0;
-            if (miniHeadPose) miniHeadPose.textContent = `${(headPose.pitch || 0).toFixed(2)} / ${(headPose.yaw || 0).toFixed(2)}`;
-
-            // Emotion spectrum update
-            if (confidenceBadge) confidenceBadge.textContent = `Conf: ${data.emotion_confidence || 0}%`;
-            emotionsList.forEach(em => {
-                const prob = (data.emotion_probabilities && data.emotion_probabilities[em]) || 0;
-                const bar = document.getElementById(`bar-${em}`);
-                const valEl = document.getElementById(`val-${em}`);
-                if (bar) bar.style.width = `${prob}%`;
-                if (valEl) valEl.textContent = `${prob.toFixed(0)}%`;
-            });
-
-            // Spatial Gaze & Head Orientation
-            if (gazeDirectionBadge) gazeDirectionBadge.textContent = data.gaze_direction || 'Looking Center';
-            const h = gazeCoords.h || 0.5;
-            const v = gazeCoords.v || 0.5;
-            if (gazeHCoord) gazeHCoord.textContent = h.toFixed(2);
-            if (gazeVCoord) gazeVCoord.textContent = v.toFixed(2);
-
-            // Gaze Radar Dot position (clamp to 10% .. 90%)
-            if (radarDot) {
-                const dotLeft = Math.max(10, Math.min(90, (1.0 - h) * 100));
-                const dotTop = Math.max(10, Math.min(90, v * 100));
-                radarDot.style.left = `${dotLeft}%`;
-                radarDot.style.top = `${dotTop}%`;
-            }
-
-            // Head pose thumbs (-1 .. +1 mapped to 0% .. 100%)
-            if (yawThumb && pitchThumb) {
-                const yawPct = Math.max(0, Math.min(100, (((headPose.yaw || 0) + 1.0) / 2.0) * 100));
-                const pitchPct = Math.max(0, Math.min(100, (((headPose.pitch || 0) + 1.0) / 2.0) * 100));
-                yawThumb.style.left = `${yawPct}%`;
-                pitchThumb.style.left = `${pitchPct}%`;
-            }
-            if (yawVal) yawVal.textContent = (headPose.yaw || 0).toFixed(2);
-            if (pitchVal) pitchVal.textContent = (headPose.pitch || 0).toFixed(2);
-
-            // Session Aggregate
-            if (statFocusedPct) statFocusedPct.textContent = `${session.focused_pct || 0}%`;
-            if (statPartialPct) statPartialPct.textContent = `${session.partial_pct || 0}%`;
-            if (statDistractedPct) statDistractedPct.textContent = `${session.distracted_pct || 0}%`;
-            if (statTotalFrames) statTotalFrames.textContent = (session.total_frames || 0).toLocaleString();
-
-            if (btnToggleMesh) {
-                if (data.mesh_visible) btnToggleMesh.classList.add('active');
-                else btnToggleMesh.classList.remove('active');
-            }
-
+            renderMetricsData(data);
         } catch (err) {
             console.error('Error in fetchMetrics:', err);
         }

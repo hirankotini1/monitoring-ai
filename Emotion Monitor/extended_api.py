@@ -146,3 +146,112 @@ def api_ml_predict():
                 "attention_score": latest.attention_score
             }
     return jsonify(ml_engine.predict(data))
+
+
+# ============================================================
+# Cloud Browser Frame Processing Endpoint
+# ============================================================
+
+@extended_bp.route("/api/process_frame", methods=["POST"])
+def api_process_frame():
+    try:
+        import base64
+        import numpy as np
+        import cv2
+        import mediapipe as mp
+        from app import (
+            monitor, landmarker, choose_face, get_blendshapes,
+            get_gaze_geometry, head_orientation, eye_open_state,
+            emotion_probabilities, CAMERA_W, CAMERA_H
+        )
+
+        data = request.get_json(silent=True) or {}
+        img_b64 = data.get("image", "")
+        if not img_b64:
+            return jsonify(monitor.get_metrics())
+        
+        if "," in img_b64:
+            img_b64 = img_b64.split(",", 1)[1]
+        
+        img_bytes = base64.b64decode(img_b64)
+        np_arr = np.frombuffer(img_bytes, np.uint8)
+        raw_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        if raw_frame is None:
+            return jsonify(monitor.get_metrics())
+        
+        frame = cv2.resize(raw_frame, (CAMERA_W, CAMERA_H))
+        frame = cv2.flip(frame, 1)
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        
+        now_ms = int(time.time() * 1000)
+        result = landmarker.detect_for_video(mp_image, now_ms)
+        
+        face_idx = choose_face(result)
+        faces_count = len(result.face_landmarks) if result.face_landmarks else 0
+        now = time.time()
+
+        with monitor.lock:
+            monitor.faces_count = faces_count
+            monitor.total_frames += 1
+            monitor.fps = 15.0
+
+            if face_idx is not None and result.face_landmarks:
+                face = result.face_landmarks[face_idx]
+                features = get_blendshapes(result, face_idx)
+
+                h, v, opening = get_gaze_geometry(face)
+                yaw, pitch = head_orientation(face)
+                eyes_open = eye_open_state(features, opening)
+
+                if monitor.was_eyes_open and not eyes_open:
+                    monitor.blink_count += 1
+                monitor.was_eyes_open = eyes_open
+
+                monitor.gaze_h = h
+                monitor.gaze_v = v
+                monitor.head_yaw = yaw
+                monitor.head_pitch = pitch
+                monitor.eyes_open = eyes_open
+
+                attention_score = monitor.attention_tracker.calculate(h, v, yaw, pitch, eyes_open, now)
+                gaze_label = monitor.attention_tracker.gaze_text(h, v, yaw, pitch)
+                calibrating = monitor.attention_tracker.calibrating
+
+                probs, emotion_label, confidence = emotion_probabilities(features, monitor.emotion_probs)
+                monitor.emotion_probs = probs
+                monitor.current_emotion = emotion_label
+                monitor.emotion_confidence = confidence
+
+                monitor.current_attention = attention_score
+                monitor.current_gaze = gaze_label
+                monitor.calibrating = calibrating
+
+                if calibrating:
+                    status = "CALIBRATING"
+                elif attention_score >= 75:
+                    status = "FOCUSED"
+                    monitor.focused_frames += 1
+                    monitor.last_distracted_time = None
+                    monitor.distraction_duration = 0.0
+                elif attention_score >= 45:
+                    status = "PARTIAL"
+                    monitor.partial_frames += 1
+                    monitor.last_distracted_time = None
+                    monitor.distraction_duration = 0.0
+                else:
+                    status = "DISTRACTED"
+                    monitor.distracted_frames += 1
+                    if monitor.last_distracted_time is None:
+                        monitor.last_distracted_time = now
+                    monitor.distraction_duration = now - monitor.last_distracted_time
+
+                monitor.current_status = status
+            else:
+                monitor.current_status = "NO FACE"
+                monitor.current_attention = 0.0
+                monitor.distracted_frames += 1
+        
+        return jsonify(monitor.get_metrics())
+    except Exception as e:
+        return jsonify(monitor.get_metrics())
