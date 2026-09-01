@@ -152,8 +152,11 @@ def api_ml_predict():
 # Cloud Browser Frame Processing Endpoint
 # ============================================================
 
+_last_frame_timestamp_ms = 0
+
 @extended_bp.route("/api/process_frame", methods=["POST"])
 def api_process_frame():
+    global _last_frame_timestamp_ms
     try:
         import base64
         import numpy as np
@@ -185,6 +188,10 @@ def api_process_frame():
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         
         now_ms = int(time.time() * 1000)
+        if now_ms <= _last_frame_timestamp_ms:
+            now_ms = _last_frame_timestamp_ms + 33
+        _last_frame_timestamp_ms = now_ms
+
         result = landmarker.detect_for_video(mp_image, now_ms)
         
         face_idx = choose_face(result)
